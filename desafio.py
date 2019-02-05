@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import cross_val_score
 from sklearn.ensemble import AdaBoostClassifier
+from sklearn.naive_bayes import GaussianNB
+
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 import xgboost as xgb
@@ -68,8 +70,7 @@ def teste_real(resultado, validacao_marcacoes):
 
     taxa_de_acerto = 100.0 * total_de_acertos / total_de_elementos
 
-    msg = "Taxa de acerto no mundo real: {0}".format(taxa_de_acerto)
-    return msg
+    return taxa_de_acerto
 
 def data_predict(modelo, validacao_dados):
     resultado = modelo.predict(validacao_dados)
@@ -85,42 +86,40 @@ label = dados['Survived']
 dados = preparar_dataframe(dados)
 print(dados)
 
-train, teste, label, label_teste = train_test_split(dados, label, test_size=0.25, random_state=0)
+train, teste, label, label_teste = train_test_split(dados, label, test_size=0.20, random_state=0)
 
-modeloAdaBoost = AdaBoostClassifier(random_state=0)
-modelXGBClassifier = xgb.XGBClassifier()
+#modelo = AdaBoostClassifier(random_state=0)
+#modelo = GaussianNB()
+modelo = xgb.XGBClassifier()
 
 
 xgb_preds = []
-K=5
+K=10
 kf = KFold(n_splits=K, shuffle=False, random_state=None)
 for train_index, test_index in kf.split(train):
-    print("TRAIN:", train_index, "TEST:", test_index)
+    # print("TRAIN:", train_index, "TEST:", test_index)
     X_train, X_test = train.iloc[train_index], train.iloc[test_index]
     y_train, y_test = label.iloc[train_index], label.iloc[test_index]
 
-    modelXGBClassifier.fit(X_train, y_train)
+    modelo.fit(X_train, y_train)
+
     # Prepara treino
-    resultado = data_predict(modelXGBClassifier, X_test)
-    print(teste_real(resultado, y_test))
-
-    #modeloAdaBoost.fit(dados, label)
-
-
-#output = pd.DataFrame({'id': id_test, 'target': preds})
+    resultado = data_predict(modelo, X_test)
+    print("Taxa de acerto na validação cruzada: {0}".format(teste_real(resultado, y_test)))
 
 
 # Prepara treino
-resultado = data_predict(modeloAdaBoost, teste)
-print(teste_real(resultado, label_teste))
+modelo.fit(train, label)
+resultado = data_predict(modelo, teste)
+print("Taxa de acerto no mundo real: {0}".format(teste_real(resultado, label_teste)))
 
 # Gerar resultado
 teste = pd.read_csv('test.csv')
-teste = preparar_dataframe(teste)
-resultado = data_predict(modeloAdaBoost, teste)
-
 # Separar os ID de passageiros
-#ids = teste['PassengerId']
+ids = teste['PassengerId']
 
-#output_file = pd.concat([ids, pd.Series(resultado)], axis=1)
-#output_file.to_csv('result_file.csv', index=False)
+teste = preparar_dataframe(teste)
+resultado = data_predict(modelo, teste)
+#Survived
+output_file = pd.concat([ids, pd.Series(data=resultado,name='Survived')], axis=1)
+output_file.to_csv('result_file.csv', index=False)
