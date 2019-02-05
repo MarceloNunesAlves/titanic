@@ -57,79 +57,7 @@ def preparar_dataframe(df):
 
     return df
 
-#file = np.genfromtxt('train.csv', delimiter=',', dtype=str, skip_header=True, usecols=[1,2,5,6,7,8])
-file = pd.read_csv('train.csv')
-
-dados = file
-label = dados['Survived']
-
-# Prepara treino/teste
-dados = preparar_dataframe(dados)
-print(dados)
-
-train, teste, label, label_teste = train_test_split(dados, label, test_size=0.25, random_state=0)
-
-modeloAdaBoost = AdaBoostClassifier(random_state=0)
-
-
-def gini(actual, pred, cmpcol=0, sortcol=1):
-    assert (len(actual) == len(pred))
-    all = np.asarray(np.c_[actual, pred, np.arange(len(actual))], dtype=np.float)
-    all = all[np.lexsort((all[:, 2], -1 * all[:, 1]))]
-    totalLosses = all[:, 0].sum()
-    giniSum = all[:, 0].cumsum().sum() / totalLosses
-
-    giniSum -= (len(actual) + 1) / 2.
-    return giniSum / len(actual)
-
-
-def gini_normalized(a, p):
-    return gini(a, p) / gini(a, a)
-
-def gini_xgb(preds, dtrain):
-    labels = dtrain.get_label()
-    gini_score = gini_normalized(labels, preds)
-    return [('gini', gini_score)]
-
-model = xgb.XGBClassifier()
-
-
-xgb_preds = []
-K=5
-kf = KFold(n_splits=K, shuffle=False, random_state=None)
-for train_index, test_index in kf.split(train):
-    print("TRAIN:", train_index, "TEST:", test_index)
-    X_train, X_test = train.iloc[train_index], train.iloc[test_index]
-    y_train, y_test = label.iloc[train_index], label.iloc[test_index]
-
-    xgb_params = {'eta': 0.02, 'max_depth': 4, 'subsample': 0.9, 'colsample_bytree': 0.9,
-                  'objective': 'binary:logistic', 'eval_metric': 'auc', 'seed': 99, 'silent': True}
-
-    d_train = xgb.DMatrix(X_train, y_train)
-    d_valid = xgb.DMatrix(X_test, y_test)
-    d_test = xgb.DMatrix(teste)
-
-    watchlist = [(d_train, 'train'), (d_valid, 'valid')]
-    model = xgb.train(xgb_params, d_train, 5000, watchlist, feval=gini_xgb, maximize=True, verbose_eval=50,
-                      early_stopping_rounds=100)
-
-    xgb_pred = model.predict(d_test)
-    xgb_preds.append(list(xgb_pred))
-
-    #modeloAdaBoost.fit(dados, label)
-
-preds=[]
-for i in range(len(xgb_preds[0])):
-    sum=0
-    for j in range(K):
-        sum+=xgb_preds[j][i]
-    preds.append(sum / K)
-
-print(preds)
-
-#output = pd.DataFrame({'id': id_test, 'target': preds})
-
-'''def teste_real(resultado, validacao_marcacoes):
+def teste_real(resultado, validacao_marcacoes):
     resultado = np.array([resultado])
     validacao_marcacoes = np.array(validacao_marcacoes)
 
@@ -147,6 +75,40 @@ def data_predict(modelo, validacao_dados):
     resultado = modelo.predict(validacao_dados)
     return resultado
 
+#file = np.genfromtxt('train.csv', delimiter=',', dtype=str, skip_header=True, usecols=[1,2,5,6,7,8])
+file = pd.read_csv('train.csv')
+
+dados = file
+label = dados['Survived']
+
+# Prepara treino/teste
+dados = preparar_dataframe(dados)
+print(dados)
+
+train, teste, label, label_teste = train_test_split(dados, label, test_size=0.25, random_state=0)
+
+modeloAdaBoost = AdaBoostClassifier(random_state=0)
+modelXGBClassifier = xgb.XGBClassifier()
+
+
+xgb_preds = []
+K=5
+kf = KFold(n_splits=K, shuffle=False, random_state=None)
+for train_index, test_index in kf.split(train):
+    print("TRAIN:", train_index, "TEST:", test_index)
+    X_train, X_test = train.iloc[train_index], train.iloc[test_index]
+    y_train, y_test = label.iloc[train_index], label.iloc[test_index]
+
+    modelXGBClassifier.fit(X_train, y_train)
+    # Prepara treino
+    resultado = data_predict(modelXGBClassifier, X_test)
+    print(teste_real(resultado, y_test))
+
+    #modeloAdaBoost.fit(dados, label)
+
+
+#output = pd.DataFrame({'id': id_test, 'target': preds})
+
 
 # Prepara treino
 resultado = data_predict(modeloAdaBoost, teste)
@@ -155,7 +117,7 @@ print(teste_real(resultado, label_teste))
 # Gerar resultado
 teste = pd.read_csv('test.csv')
 teste = preparar_dataframe(teste)
-resultado = data_predict(modeloAdaBoost, teste)'''
+resultado = data_predict(modeloAdaBoost, teste)
 
 # Separar os ID de passageiros
 #ids = teste['PassengerId']
