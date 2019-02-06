@@ -21,9 +21,9 @@ def preparar_dataframe(df):
     df['Tem_filhos'] = df.Parch.map(lambda x: 1 if x > 0 else 0)
 
     # Separa a coluna de portão de entrada
-    df['entrada_Cherbourg'] = df.Embarked.map(lambda x: 1 if x == 'C' else 0)
-    df['entrada_Southampton'] = df.Embarked.map(lambda x: 1 if x == 'S' else 0)
-    df['entrada_Queenstown'] = df.Embarked.map(lambda x: 1 if x == 'Q' else 0)
+    #df['entrada_Cherbourg'] = df.Embarked.map(lambda x: 1 if x == 'C' else 0)
+    #df['entrada_Southampton'] = df.Embarked.map(lambda x: 1 if x == 'S' else 0)
+    #df['entrada_Queenstown'] = df.Embarked.map(lambda x: 1 if x == 'Q' else 0)
 
     # Separa as Classes sociais
     df['primeira'] = df.Pclass.map(lambda x: 1 if x == 1 else 0)
